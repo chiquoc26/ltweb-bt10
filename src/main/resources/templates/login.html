@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Xác Thực JWT - Đăng nhập & Đăng ký</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #090d16 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --input-border: rgba(148, 163, 184, 0.2);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glowing Background Orbs */
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: #6366f1;
+            top: 10%;
+            left: 15%;
+        }
+        .orb-2 {
+            width: 350px;
+            height: 350px;
+            background: #a855f7;
+            bottom: 10%;
+            right: 15%;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            background: var(--primary-light);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .brand-header h1 {
+            font-size: 1.85rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .brand-header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Tabs */
+        .tab-nav {
+            display: flex;
+            background: var(--input-bg);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 28px;
+            border: 1px solid var(--input-border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        }
+
+        /* Forms */
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i.prefix-icon {
+            position: absolute;
+            left: 16px;
+            color: var(--text-muted);
+            font-size: 1rem;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 13px 16px 13px 44px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .form-control:focus + i.prefix-icon,
+        .input-wrapper:focus-within i.prefix-icon {
+            color: #818cf8;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 26px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Alert notifications */
+        .alert-box {
+            display: none;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 22px;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .alert-box.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .alert-box.success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+        }
+
+        .alert-box i {
+            margin-top: 3px;
+            font-size: 1.1rem;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .footer-note {
+            margin-top: 26px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <div class="auth-container">
+        <div class="brand-header">
+            <div class="brand-badge">
+                <i class="fa-solid fa-shield-halved"></i> JWT Spring Security 6
+            </div>
+            <h1>Bảo Mật Tài Khoản</h1>
+            <p>Hệ thống phân quyền & xác thực API Token</p>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div id="alertBox" class="alert-box">
+            <i id="alertIcon" class="fa-solid fa-triangle-exclamation"></i>
+            <div class="alert-content">
+                <div id="alertTitle" class="alert-title">Thông báo</div>
+                <div id="alertMsg">Nội dung thông báo</div>
+            </div>
+        </div>
+
+        <!-- Tab Switcher -->
+        <div class="tab-nav">
+            <button type="button" class="tab-btn active" id="tabLoginBtn" onclick="switchTab('login')">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Đăng nhập
+            </button>
+            <button type="button" class="tab-btn" id="tabRegisterBtn" onclick="switchTab('register')">
+                <i class="fa-solid fa-user-plus"></i> Đăng ký
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+            <div class="form-group">
+                <label for="loginEmail">Email đăng nhập</label>
+                <div class="input-wrapper">
+                    <input type="email" id="loginEmail" class="form-control" placeholder="name@example.com" required autocomplete="username">
+                    <i class="fa-regular fa-envelope prefix-icon"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="loginPassword">Mật khẩu</label>
+                <div class="input-wrapper">
+                    <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                    <i class="fa-solid fa-lock prefix-icon"></i>
+                </div>
+            </div>
+
+            <button type="submit" id="loginSubmitBtn" class="submit-btn">
+                <span>Đăng nhập ngay</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form">
+            <div class="form-group">
+                <label for="regFullName">Họ và tên</label>
+                <div class="input-wrapper">
+                    <input type="text" id="regFullName" class="form-control" placeholder="Nguyễn Văn A" required>
+                    <i class="fa-regular fa-user prefix-icon"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="regEmail">Địa chỉ Email</label>
+                <div class="input-wrapper">
+                    <input type="email" id="regEmail" class="form-control" placeholder="name@example.com" required autocomplete="email">
+                    <i class="fa-regular fa-envelope prefix-icon"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="regPassword">Mật khẩu bảo mật</label>
+                <div class="input-wrapper">
+                    <input type="password" id="regPassword" class="form-control" placeholder="Ít nhất 6 ký tự" required autocomplete="new-password">
+                    <i class="fa-solid fa-lock prefix-icon"></i>
+                </div>
+            </div>
+
+            <button type="submit" id="regSubmitBtn" class="submit-btn">
+                <span>Tạo tài khoản mới</span>
+                <i class="fa-solid fa-user-check"></i>
+            </button>
+        </form>
+
+        <div class="footer-note">
+            Bài Tập 10 - Lập Trình Web Spring Boot & JWT
+        </div>
+    </div>
+
+    <script>
+        function showAlert(type, title, message) {
+            const alertBox = $('#alertBox');
+            const alertIcon = $('#alertIcon');
+            const alertTitle = $('#alertTitle');
+            const alertMsg = $('#alertMsg');
+
+            alertBox.removeClass('danger success').addClass(type).css('display', 'flex');
+            alertTitle.text(title);
+            alertMsg.html(message);
+
+            if (type === 'danger') {
+                alertIcon.attr('class', 'fa-solid fa-triangle-exclamation');
+            } else {
+                alertIcon.attr('class', 'fa-solid fa-circle-check');
+            }
+        }
+
+        function hideAlert() {
+            $('#alertBox').hide();
+        }
+
+        function switchTab(tab) {
+            hideAlert();
+            if (tab === 'login') {
+                $('#tabLoginBtn').addClass('active');
+                $('#tabRegisterBtn').removeClass('active');
+                $('#loginForm').addClass('active');
+                $('#registerForm').removeClass('active');
+            } else {
+                $('#tabRegisterBtn').addClass('active');
+                $('#tabLoginBtn').removeClass('active');
+                $('#registerForm').addClass('active');
+                $('#loginForm').removeClass('active');
+            }
+        }
+
+        // On document ready
+        $(document).ready(function() {
+            // Check if user already logged in with valid token
+            const existingToken = localStorage.getItem('token');
+            if (existingToken) {
+                // Pre-check token validity by requesting /users/me
+                $.ajax({
+                    url: '/users/me',
+                    type: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + existingToken },
+                    success: function() {
+                        window.location.href = '/user/profile';
+                    },
+                    error: function() {
+                        localStorage.removeItem('token');
+                    }
+                });
+            }
+
+            // AJAX: Đăng nhập (/auth/login)
+            $('#loginForm').on('submit', function(e) {
+                e.preventDefault();
+                hideAlert();
+
+                const email = $('#loginEmail').val().trim();
+                const password = $('#loginPassword').val();
+                const submitBtn = $('#loginSubmitBtn');
+
+                submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Đang xác thực...');
+
+                $.ajax({
+                    url: '/auth/login',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        email: email,
+                        password: password
+                    }),
+                    success: function(response) {
+                        // Lưu token vào localStorage theo yêu cầu
+                        localStorage.setItem('token', response.token);
+                        localStorage.setItem('expiresIn', response.expiresIn);
+
+                        showAlert('success', 'Đăng nhập thành công!', 'Đang chuyển hướng sang trang hồ sơ cá nhân...');
+                        setTimeout(function() {
+                            window.location.href = '/user/profile';
+                        }, 800);
+                    },
+                    error: function(xhr) {
+                        submitBtn.prop('disabled', false).html('<span>Đăng nhập ngay</span> <i class="fa-solid fa-arrow-right"></i>');
+                        
+                        let title = 'Đăng nhập thất bại';
+                        let detail = 'Có lỗi xảy ra, vui lòng thử lại.';
+
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.title) title = xhr.responseJSON.title;
+                            if (xhr.responseJSON.detail) detail = xhr.responseJSON.detail;
+                            if (xhr.responseJSON.errors) {
+                                detail = Object.values(xhr.responseJSON.errors).join('<br>');
+                            }
+                        } else if (xhr.status === 401) {
+                            detail = 'Email hoặc mật khẩu không chính xác.';
+                        }
+
+                        showAlert('danger', title, detail);
+                    }
+                });
+            });
+
+            // AJAX: Đăng ký tài khoản (/auth/signup)
+            $('#registerForm').on('submit', function(e) {
+                e.preventDefault();
+                hideAlert();
+
+                const fullName = $('#regFullName').val().trim();
+                const email = $('#regEmail').val().trim();
+                const password = $('#regPassword').val();
+                const submitBtn = $('#regSubmitBtn');
+
+                submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo tài khoản...');
+
+                $.ajax({
+                    url: '/auth/signup',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        fullName: fullName,
+                        email: email,
+                        password: password
+                    }),
+                    success: function(response) {
+                        submitBtn.prop('disabled', false).html('<span>Tạo tài khoản mới</span> <i class="fa-solid fa-user-check"></i>');
+                        
+                        // Switch to login tab and prefill email
+                        switchTab('login');
+                        $('#loginEmail').val(email);
+                        $('#loginPassword').val('').focus();
+                        
+                        showAlert('success', 'Đăng ký thành công!', 'Tài khoản đã được tạo. Vui lòng nhập mật khẩu để đăng nhập.');
+                        $('#registerForm')[0].reset();
+                    },
+                    error: function(xhr) {
+                        submitBtn.prop('disabled', false).html('<span>Tạo tài khoản mới</span> <i class="fa-solid fa-user-check"></i>');
+                        
+                        let title = 'Đăng ký thất bại';
+                        let detail = 'Không thể tạo tài khoản.';
+
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.title) title = xhr.responseJSON.title;
+                            if (xhr.responseJSON.detail) detail = xhr.responseJSON.detail;
+                            if (xhr.responseJSON.errors) {
+                                detail = Object.values(xhr.responseJSON.errors).join('<br>');
+                            }
+                        }
+
+                        showAlert('danger', title, detail);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
